@@ -31,3 +31,10 @@ build/
 
 ### VS Code ###
 .vscode/
+
+### MacOS ###
+.DS_Store
+.use-java-21.sh
+
+## DEV
+.application.properties
