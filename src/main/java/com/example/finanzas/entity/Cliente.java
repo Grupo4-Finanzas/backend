@@ -1,7 +1,10 @@
 package com.example.finanzas.entity;
 
+import com.example.finanzas.entity.enums.RolUsuario;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
@@ -41,11 +44,15 @@ public class Cliente {
 
     @NotBlank
     @Size(max = 50)
-    @Column(name = "email", nullable = false, length = 50)
+    @Column(name = "email", nullable = false, unique = true, length = 50)
     private String email;
 
     @NotBlank
-    @Size(max = 128)
-    @Column(name = "firebase_uid", nullable = false, unique = true, length = 128)
-    private String firebaseUid;
+    @Size(max = 256)
+    @Column(name = "password_hash", nullable = false, length = 256)
+    private String passwordHash;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "rol", nullable = false, length = 10)
+    private RolUsuario rol = RolUsuario.CLIENT;
 }

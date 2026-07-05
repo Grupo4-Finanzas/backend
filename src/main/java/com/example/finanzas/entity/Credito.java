@@ -1,5 +1,6 @@
 package com.example.finanzas.entity;
 
+import com.example.finanzas.entity.enums.EstadoSimulacion;
 import com.example.finanzas.entity.enums.FrecuenciaCapitalizacion;
 import com.example.finanzas.entity.enums.TipoPeriodoGracia;
 import com.example.finanzas.entity.enums.TipoTasa;
@@ -18,6 +19,7 @@ import jakarta.persistence.OneToMany;
 import jakarta.persistence.Table;
 import jakarta.validation.constraints.NotNull;
 import java.math.BigDecimal;
+import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
 import lombok.AllArgsConstructor;
@@ -101,6 +103,15 @@ public class Credito {
     @Column(name = "gastos_administrativos_mensuales", nullable = false, precision = 5, scale = 2)
     private BigDecimal gastosAdministrativosMensuales;
 
+    @Column(name = "tasa_referencia_van", precision = 8, scale = 4)
+    private BigDecimal tasaReferenciaVan;
+
+    @Column(name = "tem_calculada", precision = 10, scale = 7)
+    private BigDecimal temCalculada;
+
+    @Column(name = "valor_cuota_balon", precision = 10, scale = 2)
+    private BigDecimal valorCuotaBalon;
+
     @Column(name = "cuota_mensual_ordinaria", precision = 10, scale = 2)
     private BigDecimal cuotaMensualOrdinaria;
 
@@ -112,6 +123,14 @@ public class Credito {
 
     @Column(name = "van", precision = 12, scale = 2)
     private BigDecimal van;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "estado", nullable = false, length = 15)
+    private EstadoSimulacion estado = EstadoSimulacion.CALCULATED;
+
+    @NotNull
+    @Column(name = "fecha_creacion", nullable = false)
+    private Instant fechaCreacion = Instant.now();
 
     @OneToMany(mappedBy = "credito", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<Cronograma> cronogramas = new ArrayList<>();

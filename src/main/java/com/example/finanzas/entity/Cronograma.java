@@ -65,6 +65,14 @@ public class Cronograma {
     private BigDecimal cuotaSeguroVehicular;
 
     @NotNull
+    @Column(name = "gastos_administrativos", nullable = false, precision = 10, scale = 2)
+    private BigDecimal gastosAdministrativos;
+
+    @NotNull
+    @Column(name = "cuota_balon", nullable = false, precision = 10, scale = 2)
+    private BigDecimal cuotaBalon;
+
+    @NotNull
     @Column(name = "cuota_total", nullable = false, precision = 10, scale = 2)
     private BigDecimal cuotaTotal;
 

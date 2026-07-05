@@ -1,21 +1,21 @@
 spring.application.name=finanzas
 
-# Neon PostgreSQL (pooler)
-spring.datasource.url=jdbc:postgresql://ep-quiet-glade-adgewfay-pooler.c-2.us-east-1.aws.neon.tech/neondb?sslmode=require
-spring.datasource.username=neondb_owner
-spring.datasource.password=npg_0qhE2UGisvmI
+# Copy to application.properties and fill in your Neon credentials.
+# application.properties is gitignored.
+
+spring.datasource.url=jdbc:postgresql://YOUR_NEON_HOST/neondb?sslmode=require
+spring.datasource.username=YOUR_NEON_USER
+spring.datasource.password=YOUR_NEON_PASSWORD
 spring.datasource.driver-class-name=org.postgresql.Driver
 
-# Pool sizing recommended for Neon serverless
 spring.datasource.hikari.maximum-pool-size=5
 spring.datasource.hikari.minimum-idle=1
 spring.datasource.hikari.connection-timeout=30000
 
 spring.jpa.hibernate.ddl-auto=update
 spring.jpa.show-sql=false
-spring.jpa.properties.hibernate.dialect=org.hibernate.dialect.PostgreSQLDialect
 
-server.port=8080
+server.port=8081
 
 app.cors.allowed-origins=http://localhost:4200
 app.jwt.secret=change-this-secret-key-to-at-least-32-characters-long-for-hs256
