@@ -52,7 +52,7 @@ class SimulationPostgresIntegrationTest extends AbstractIntegrationTest {
                 "credit", Map.of("initialFeePercentage", 20, "balloonFeePercentage", 35, "termMonths", 48),
                 "interest", Map.of("rateType", "TEA", "rateValuePercentage", 12.5, "paymentFrequency", "MONTHLY"),
                 "gracePeriod", Map.of("type", "NONE", "months", 0),
-                "financialAnalysis", Map.of("targetTirPercentage", 15),
+                "financialAnalysis", Map.of("cokAnnualPercentage", 15),
                 "costs", Map.of(
                         "lifeInsuranceMonthlyRatePercentage", 0.05,
                         "administrativeExpenses", 10,

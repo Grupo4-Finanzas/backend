@@ -48,7 +48,7 @@ public final class IrrSolver {
         }
 
         if (BigDecimalMath.compare(npvLower.multiply(npvUpper), BigDecimal.ZERO) > 0) {
-            return BigDecimalMath.min(initialGuess, MAX_MONTHLY_RATE);
+            throw new IllegalArgumentException("IRR could not be solved because cash flows do not bracket a root");
         }
 
         for (int i = 0; i < MAX_ITERATIONS; i++) {

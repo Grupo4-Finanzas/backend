@@ -79,6 +79,10 @@ public class AuthService {
     }
 
     private String generatePlaceholderDni() {
-        return String.format("%08d", System.currentTimeMillis() % 100_000_000L);
+        String dni;
+        do {
+            dni = String.format("%08d", System.nanoTime() % 100_000_000L);
+        } while (clienteRepository.existsByDni(dni));
+        return dni;
     }
 }

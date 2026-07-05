@@ -34,7 +34,7 @@ public class Cliente {
 
     @NotBlank
     @Size(max = 8)
-    @Column(name = "dni", nullable = false, length = 8)
+    @Column(name = "dni", nullable = false, unique = true, length = 8)
     private String dni;
 
     @NotBlank

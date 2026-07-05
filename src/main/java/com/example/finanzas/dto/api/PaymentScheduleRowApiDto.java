@@ -13,6 +13,7 @@ import lombok.NoArgsConstructor;
 public class PaymentScheduleRowApiDto {
 
     private int period;
+    private String paymentDate;
     private BigDecimal initialBalance;
     private BigDecimal amortization;
     private BigDecimal interest;

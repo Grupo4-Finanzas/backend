@@ -1,6 +1,7 @@
 package com.example.finanzas.dto;
 
 import java.math.BigDecimal;
+import java.time.LocalDate;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -13,6 +14,7 @@ import lombok.NoArgsConstructor;
 public class PaymentScheduleRowDTO {
 
     private int period;
+    private LocalDate paymentDate;
     private BigDecimal initialBalance;
     private BigDecimal interest;
     private BigDecimal amortization;
