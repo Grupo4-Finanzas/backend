@@ -1,0 +1,9 @@
+.git
+.idea
+.agents
+.codex
+target
+*.iml
+*.log
+docker-compose.yml
+reporte_revision_backend_credito_vehicular.md

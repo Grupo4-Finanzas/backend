@@ -15,7 +15,7 @@ import lombok.NoArgsConstructor;
 public class ClientDataDto {
 
     @NotBlank
-    @Size(min = 8, max = 8)
+    @Size(min = 8, max = 8, message = "dni size must be 8 digits")
     @Pattern(regexp = "\\d{8}", message = "documentNumber must contain exactly 8 digits")
     private String documentNumber;
 

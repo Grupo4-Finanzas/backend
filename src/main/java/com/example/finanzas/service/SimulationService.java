@@ -32,6 +32,7 @@ import java.util.List;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -126,12 +127,13 @@ public class SimulationService {
             LocalDate createdFrom,
             LocalDate createdTo) {
 
-        Pageable pageable = PageRequest.of(Math.max(page, 0), Math.max(size, 1));
-        var historyPage = creditoRepository.findHistory(
-                cliente.getIdCliente(),
-                toStartInstant(createdFrom),
-                toEndInstant(createdTo),
-                pageable);
+        Pageable pageable = PageRequest.of(
+                Math.max(page, 0),
+                Math.max(size, 1),
+                Sort.by(Sort.Direction.DESC, "fechaCreacion"));
+        Instant from = toStartInstant(createdFrom);
+        Instant to = toEndInstant(createdTo);
+        var historyPage = findHistoryPage(cliente.getIdCliente(), from, to, pageable);
 
         List<SimulationHistoryItemDto> content = historyPage.getContent().stream()
                 .map(c -> {
@@ -270,6 +272,26 @@ public class SimulationService {
 
     private Instant toEndInstant(LocalDate date) {
         return date != null ? date.plusDays(1).atStartOfDay(BUSINESS_ZONE).minusNanos(1).toInstant() : null;
+    }
+
+    private org.springframework.data.domain.Page<Credito> findHistoryPage(
+            Long idCliente,
+            Instant createdFrom,
+            Instant createdTo,
+            Pageable pageable) {
+        if (createdFrom != null && createdTo != null) {
+            return creditoRepository.findByClienteIdClienteAndFechaCreacionBetween(
+                    idCliente, createdFrom, createdTo, pageable);
+        }
+        if (createdFrom != null) {
+            return creditoRepository.findByClienteIdClienteAndFechaCreacionGreaterThanEqual(
+                    idCliente, createdFrom, pageable);
+        }
+        if (createdTo != null) {
+            return creditoRepository.findByClienteIdClienteAndFechaCreacionLessThanEqual(
+                    idCliente, createdTo, pageable);
+        }
+        return creditoRepository.findByClienteIdCliente(idCliente, pageable);
     }
 
     private SimulationDraftDto rebuildDraftFromCredito(Credito credito) {
