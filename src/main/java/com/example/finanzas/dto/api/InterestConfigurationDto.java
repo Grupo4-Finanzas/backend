@@ -25,6 +25,7 @@ public class InterestConfigurationDto {
     private BigDecimal rateValuePercentage;
 
     @NotBlank
+    @Pattern(regexp = "MONTHLY", message = "paymentFrequency must be MONTHLY")
     private String paymentFrequency;
 
     private String capitalizationFrequency;

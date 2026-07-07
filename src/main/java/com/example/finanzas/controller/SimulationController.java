@@ -8,11 +8,15 @@ import com.example.finanzas.dto.api.SimulationCalculationResponseDto;
 import com.example.finanzas.dto.api.SimulationDraftDto;
 import com.example.finanzas.dto.api.SimulationHistoryItemDto;
 import com.example.finanzas.entity.Cliente;
+import com.example.finanzas.service.ReportExportService;
 import com.example.finanzas.service.SimulationService;
 import jakarta.validation.Valid;
 import java.time.LocalDate;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.MediaType;
+import org.springframework.http.ResponseEntity;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.DeleteMapping;
@@ -30,6 +34,7 @@ import org.springframework.web.bind.annotation.RestController;
 public class SimulationController {
 
     private final SimulationService simulationService;
+    private final ReportExportService reportExportService;
 
     /** Engine-only endpoint for direct calculation testing (no auth, no persistence). */
     @PostMapping("/calculate-engine")
@@ -73,10 +78,44 @@ public class SimulationController {
         return simulationService.getSchedule(id, cliente);
     }
 
+    @GetMapping("/{id}/report/pdf")
+    public ResponseEntity<byte[]> downloadSimulationPdf(
+            @PathVariable Long id,
+            @AuthenticationPrincipal Cliente cliente) {
+        byte[] file = reportExportService.buildSimulationPdf(id, cliente);
+        return download(file, "simulation-" + id + "-report.pdf", MediaType.APPLICATION_PDF_VALUE);
+    }
+
+    @GetMapping("/{id}/schedule/export/pdf")
+    public ResponseEntity<byte[]> downloadSchedulePdf(
+            @PathVariable Long id,
+            @AuthenticationPrincipal Cliente cliente) {
+        byte[] file = reportExportService.buildSchedulePdf(id, cliente);
+        return download(file, "simulation-" + id + "-schedule.pdf", MediaType.APPLICATION_PDF_VALUE);
+    }
+
+    @GetMapping("/{id}/schedule/export/xlsx")
+    public ResponseEntity<byte[]> downloadScheduleXlsx(
+            @PathVariable Long id,
+            @AuthenticationPrincipal Cliente cliente) {
+        byte[] file = reportExportService.buildScheduleXlsx(id, cliente);
+        return download(
+                file,
+                "simulation-" + id + "-schedule.xlsx",
+                "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
+    }
+
     @DeleteMapping("/{id}")
     public void delete(
             @PathVariable Long id,
             @AuthenticationPrincipal Cliente cliente) {
         simulationService.delete(id, cliente);
+    }
+
+    private ResponseEntity<byte[]> download(byte[] file, String filename, String contentType) {
+        return ResponseEntity.ok()
+                .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"" + filename + "\"")
+                .contentType(MediaType.parseMediaType(contentType))
+                .body(file);
     }
 }
