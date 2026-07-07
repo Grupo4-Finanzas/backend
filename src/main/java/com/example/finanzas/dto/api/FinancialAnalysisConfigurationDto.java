@@ -14,5 +14,5 @@ import lombok.NoArgsConstructor;
 public class FinancialAnalysisConfigurationDto {
 
     @NotNull
-    private BigDecimal targetTirPercentage;
+    private BigDecimal cokAnnualPercentage;
 }

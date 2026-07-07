@@ -1,7 +1,6 @@
-package com.example.finanzas.dto.api;
+package com.example.finanzas.dto.auth;
 
 import jakarta.validation.constraints.NotBlank;
-import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.Size;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -12,12 +11,7 @@ import lombok.NoArgsConstructor;
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
-public class ClientDataDto {
-
-    @NotBlank
-    @Size(min = 8, max = 8, message = "dni size must be 8 digits")
-    @Pattern(regexp = "\\d{8}", message = "documentNumber must contain exactly 8 digits")
-    private String documentNumber;
+public class UpdateProfileRequestDto {
 
     @NotBlank
     @Size(max = 100)

@@ -1,12 +1,18 @@
 package com.example.finanzas;
 
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.example.finanzas.repository.CronogramaRepository;
 import java.util.HashMap;
 import java.util.Map;
+import java.time.LocalDate;
+import java.time.ZoneId;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
@@ -25,6 +31,9 @@ class SimulationIntegrationTest {
 
     @Autowired
     private ObjectMapper objectMapper;
+
+    @Autowired
+    private CronogramaRepository cronogramaRepository;
 
     @Test
     void calculateEngine_returnsSimulationResults() throws Exception {
@@ -58,14 +67,45 @@ class SimulationIntegrationTest {
 
         String token = objectMapper.readTree(registerResponse).get("token").asText();
 
-        mockMvc.perform(post("/api/v1/simulations/calculate")
+        String calculateResponse = mockMvc.perform(post("/api/v1/simulations/calculate")
                         .header("Authorization", "Bearer " + token)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(buildFrontendDraft())))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.id").exists())
                 .andExpect(jsonPath("$.results.tceaPercentage").exists())
-                .andExpect(jsonPath("$.results.schedule.length()").value(48));
+                .andExpect(jsonPath("$.results.schedule.length()").value(48))
+                .andReturn()
+                .getResponse()
+                .getContentAsString();
+
+        long simulationId = objectMapper.readTree(calculateResponse).get("id").asLong();
+        String today = LocalDate.now(ZoneId.of("America/Lima")).toString();
+
+        mockMvc.perform(get("/api/v1/simulations/history/page")
+                        .header("Authorization", "Bearer " + token)
+                        .param("page", "0")
+                        .param("size", "5")
+                        .param("createdFrom", today)
+                        .param("createdTo", today))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.content.length()").value(1))
+                .andExpect(jsonPath("$.content[0].id").value(simulationId))
+                .andExpect(jsonPath("$.totalElements").value(1));
+
+        mockMvc.perform(get("/api/v1/simulations/{id}/schedule", simulationId)
+                        .header("Authorization", "Bearer " + token))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.length()").value(48))
+                .andExpect(jsonPath("$[0].paymentDate").exists())
+                .andExpect(jsonPath("$[0].totalPayment").exists());
+
+        var firstScheduleRow = cronogramaRepository.findAll().stream()
+                .filter(row -> row.getPeriodo() == 1)
+                .findFirst()
+                .orElseThrow();
+        assertNotNull(firstScheduleRow.getCuotaMensualOrdinaria());
+        assertTrue(firstScheduleRow.getCuotaTotal().compareTo(firstScheduleRow.getCuotaMensualOrdinaria()) > 0);
     }
 
     private Map<String, Object> buildEngineRequest() {
@@ -92,7 +132,7 @@ class SimulationIntegrationTest {
         draft.put("credit", Map.of("initialFeePercentage", 20, "balloonFeePercentage", 35, "termMonths", 48));
         draft.put("interest", Map.of("rateType", "TEA", "rateValuePercentage", 12.5, "paymentFrequency", "MONTHLY"));
         draft.put("gracePeriod", Map.of("type", "NONE", "months", 0));
-        draft.put("financialAnalysis", Map.of("targetTirPercentage", 15));
+        draft.put("financialAnalysis", Map.of("cokAnnualPercentage", 15));
         draft.put("costs", Map.of(
                 "lifeInsuranceMonthlyRatePercentage", 0.05,
                 "administrativeExpenses", 10,

@@ -110,6 +110,7 @@ public class SimulationResponseMapper {
 
         return PaymentScheduleRowApiDto.builder()
                 .period(row.getPeriod())
+                .paymentDate(row.getPaymentDate() != null ? row.getPaymentDate().toString() : null)
                 .initialBalance(row.getInitialBalance())
                 .amortization(row.getAmortization())
                 .interest(row.getInterest())
@@ -119,6 +120,26 @@ public class SimulationResponseMapper {
                         BigDecimalMath.add(insurance, row.getAdministrativeExpense())))
                 .totalPayment(row.getTotalMonthlyPayment())
                 .finalBalance(row.getFinalBalance())
+                .status("PENDING")
+                .build();
+    }
+
+    public PaymentScheduleRowApiDto toApiScheduleRow(com.example.finanzas.entity.Cronograma row) {
+        BigDecimal insurance = BigDecimalMath.scaleOutput(
+                BigDecimalMath.add(row.getCuotaSeguroDesgravamen(), row.getCuotaSeguroVehicular()));
+
+        return PaymentScheduleRowApiDto.builder()
+                .period(row.getPeriodo())
+                .paymentDate(row.getFechaPago() != null ? row.getFechaPago().toString() : null)
+                .initialBalance(row.getSaldoInicial())
+                .amortization(row.getAmortizacion())
+                .interest(row.getInteres())
+                .insurance(insurance)
+                .administrativeExpenses(row.getGastosAdministrativos())
+                .costs(BigDecimalMath.scaleOutput(
+                        BigDecimalMath.add(insurance, row.getGastosAdministrativos())))
+                .totalPayment(row.getCuotaTotal())
+                .finalBalance(row.getSaldoFinal())
                 .status("PENDING")
                 .build();
     }

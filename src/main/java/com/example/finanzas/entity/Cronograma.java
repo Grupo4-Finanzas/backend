@@ -12,6 +12,7 @@ import jakarta.persistence.Table;
 import jakarta.persistence.UniqueConstraint;
 import jakarta.validation.constraints.NotNull;
 import java.math.BigDecimal;
+import java.time.LocalDate;
 import lombok.AllArgsConstructor;
 import lombok.EqualsAndHashCode;
 import lombok.Getter;
@@ -45,6 +46,10 @@ public class Cronograma {
     private Integer periodo;
 
     @NotNull
+    @Column(name = "fecha_pago", nullable = false)
+    private LocalDate fechaPago;
+
+    @NotNull
     @Column(name = "saldo_inicial", nullable = false, precision = 10, scale = 2)
     private BigDecimal saldoInicial;
 
@@ -71,6 +76,10 @@ public class Cronograma {
     @NotNull
     @Column(name = "cuota_balon", nullable = false, precision = 10, scale = 2)
     private BigDecimal cuotaBalon;
+
+    @NotNull
+    @Column(name = "cuota_mensual_ordinaria", nullable = false, precision = 10, scale = 2)
+    private BigDecimal cuotaMensualOrdinaria;
 
     @NotNull
     @Column(name = "cuota_total", nullable = false, precision = 10, scale = 2)

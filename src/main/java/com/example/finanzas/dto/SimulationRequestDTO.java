@@ -1,5 +1,7 @@
 package com.example.finanzas.dto;
 
+import com.example.finanzas.entity.enums.FrecuenciaCapitalizacion;
+import jakarta.validation.constraints.DecimalMax;
 import jakarta.validation.constraints.DecimalMin;
 import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
@@ -22,19 +24,23 @@ public class SimulationRequestDTO {
     private BigDecimal vehiclePrice;
 
     @NotNull
-    @DecimalMin(value = "0", message = "downPaymentPercentage must be >= 0")
+    @DecimalMin(value = "0.10", message = "downPaymentPercentage must be at least 0.10")
+    @DecimalMax(value = "0.30", message = "downPaymentPercentage must be at most 0.30")
     private BigDecimal downPaymentPercentage;
 
     @NotNull
-    @DecimalMin(value = "0", message = "balloonPaymentPercentage must be >= 0")
+    @DecimalMin(value = "0.35", message = "balloonPaymentPercentage must be at least 0.35")
+    @DecimalMax(value = "0.50", message = "balloonPaymentPercentage must be at most 0.50")
     private BigDecimal balloonPaymentPercentage;
 
     @NotBlank
     private String rateType;
 
     @NotNull
-    @DecimalMin(value = "0", message = "rateValue must be >= 0")
+    @DecimalMin(value = "0.0000001", message = "rateValue must be greater than 0")
     private BigDecimal rateValue;
+
+    private FrecuenciaCapitalizacion capitalizationFrequency;
 
     @Min(1)
     private int totalTermMonths;

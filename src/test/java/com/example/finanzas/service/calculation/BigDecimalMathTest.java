@@ -1,7 +1,6 @@
 package com.example.finanzas.service.calculation;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.math.BigDecimal;
 import org.junit.jupiter.api.Test;
@@ -12,7 +11,13 @@ class BigDecimalMathTest {
     void pow_computesCorrectResult() {
         BigDecimal base = BigDecimalMath.of("1.12");
         BigDecimal result = BigDecimalMath.pow(base, BigDecimalMath.of("0.0833333333"));
-        assertTrue(result.compareTo(BigDecimal.ZERO) > 0);
+        assertEquals(0, result.compareTo(BigDecimalMath.of("1.0094887929")));
+    }
+
+    @Test
+    void pow_supportsNegativeIntegerExponent() {
+        BigDecimal result = BigDecimalMath.pow(BigDecimalMath.of("1.01"), -2);
+        assertEquals(0, result.compareTo(BigDecimalMath.of("0.9802960494")));
     }
 
     @Test

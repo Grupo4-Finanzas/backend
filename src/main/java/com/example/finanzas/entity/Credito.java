@@ -62,6 +62,10 @@ public class Credito {
     private BigDecimal porcentajeCuotaBalon;
 
     @NotNull
+    @Column(name = "cuota_inicial_monto", nullable = false, precision = 10, scale = 2)
+    private BigDecimal cuotaInicialMonto;
+
+    @NotNull
     @Column(name = "monto_financiado", nullable = false, precision = 10, scale = 2)
     private BigDecimal montoFinanciado;
 

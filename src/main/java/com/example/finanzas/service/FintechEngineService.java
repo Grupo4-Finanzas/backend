@@ -7,6 +7,7 @@ import com.example.finanzas.service.calculation.BigDecimalMath;
 import com.example.finanzas.service.calculation.IrrSolver;
 import com.example.finanzas.service.calculation.RateConverter;
 import java.math.BigDecimal;
+import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
 import org.springframework.stereotype.Service;
@@ -19,6 +20,10 @@ import org.springframework.stereotype.Service;
 public class FintechEngineService {
 
     private static final BigDecimal TWELVE = BigDecimalMath.of("12");
+    private static final BigDecimal MIN_DOWN_PAYMENT_PERCENTAGE = BigDecimalMath.of("0.10");
+    private static final BigDecimal MAX_DOWN_PAYMENT_PERCENTAGE = BigDecimalMath.of("0.30");
+    private static final BigDecimal MIN_BALLOON_PERCENTAGE = BigDecimalMath.of("0.35");
+    private static final BigDecimal MAX_BALLOON_PERCENTAGE = BigDecimalMath.of("0.50");
 
     public SimulationResponseDTO calculate(SimulationRequestDTO request) {
         validateRequest(request);
@@ -33,7 +38,10 @@ public class FintechEngineService {
         // CB = vehiclePrice × balloonPaymentPercentage
         BigDecimal balloonPayment = BigDecimalMath.multiply(vehiclePrice, request.getBalloonPaymentPercentage());
 
-        BigDecimal tem = RateConverter.toMonthlyEffective(request.getRateType(), request.getRateValue());
+        BigDecimal tem = RateConverter.toMonthlyEffective(
+                request.getRateType(),
+                request.getRateValue(),
+                request.getCapitalizationFrequency());
 
         BigDecimal currentBalance = netLoanAmount;
         List<PaymentScheduleRowDTO> schedule = new ArrayList<>();
@@ -44,12 +52,13 @@ public class FintechEngineService {
         int graceMonths = request.getGracePeriodMonths();
 
         // Step 2: Grace period processing
+        LocalDate firstPaymentDate = LocalDate.now().plusMonths(1);
         if ("TOTAL".equals(graceType)) {
             currentBalance = processTotalGrace(
-                    request, vehiclePrice, tem, currentBalance, graceMonths, schedule, cashFlows);
+                    request, vehiclePrice, tem, currentBalance, graceMonths, firstPaymentDate, schedule, cashFlows);
         } else if ("PARTIAL".equals(graceType)) {
             processPartialGrace(
-                    request, vehiclePrice, tem, currentBalance, graceMonths, schedule, cashFlows);
+                    request, vehiclePrice, tem, currentBalance, graceMonths, firstPaymentDate, schedule, cashFlows);
             // currentBalance unchanged for partial grace
         } else if (graceMonths > 0) {
             throw new IllegalArgumentException("gracePeriodType must be TOTAL or PARTIAL when gracePeriodMonths > 0");
@@ -80,13 +89,15 @@ public class FintechEngineService {
                     BigDecimalMath.add(vehicleInsurance,
                             BigDecimalMath.add(request.getMonthlyAdministrativeExpense(), balloonPaymentPaid)));
 
-            BigDecimal finalBalanceOfMonth = BigDecimalMath.subtract(initialBalanceOfMonth, amortization);
+            BigDecimal finalBalanceOfMonth = BigDecimalMath.subtract(
+                    BigDecimalMath.subtract(initialBalanceOfMonth, amortization),
+                    balloonPaymentPaid);
             if (BigDecimalMath.compare(finalBalanceOfMonth, BigDecimal.ZERO) < 0) {
                 finalBalanceOfMonth = BigDecimalMath.zero();
             }
 
             schedule.add(buildScheduleRow(
-                    month, initialBalanceOfMonth, interest, amortization,
+                    month, firstPaymentDate.plusMonths(month - 1L), initialBalanceOfMonth, interest, amortization,
                     desgravamenInsurance, vehicleInsurance, request.getMonthlyAdministrativeExpense(),
                     balloonPaymentPaid, regularMonthlyInstallment, totalMonthlyPayment, finalBalanceOfMonth));
 
@@ -105,8 +116,8 @@ public class FintechEngineService {
         BigDecimal npvAtReferenceRate = null;
         String viability = "NOT_VIABLE";
         if (request.getReferenceDiscountRate() != null) {
-            BigDecimal monthlyReferenceRate = BigDecimalMath.divide(
-                    request.getReferenceDiscountRate(), TWELVE);
+            BigDecimal monthlyReferenceRate = RateConverter.toMonthlyEffective(
+                    "TEA", request.getReferenceDiscountRate());
             npvAtReferenceRate = IrrSolver.calculateNpv(cashFlows, monthlyReferenceRate);
             viability = BigDecimalMath.compare(npvAtReferenceRate, BigDecimal.ZERO) >= 0
                     ? "VIABLE" : "NOT_VIABLE";
@@ -160,7 +171,7 @@ public class FintechEngineService {
                 BigDecimalMath.subtract(BigDecimal.ONE, BigDecimalMath.pow(onePlusTem, -remainingTermMonths)),
                 tem);
 
-        return BigDecimalMath.multiply(numeratorFactor, denominatorFactor);
+        return BigDecimalMath.divide(numeratorFactor, denominatorFactor);
     }
 
     private BigDecimal processTotalGrace(
@@ -169,26 +180,23 @@ public class FintechEngineService {
             BigDecimal tem,
             BigDecimal currentBalance,
             int graceMonths,
+            LocalDate firstPaymentDate,
             List<PaymentScheduleRowDTO> schedule,
             List<BigDecimal> cashFlows) {
 
         for (int month = 1; month <= graceMonths; month++) {
             BigDecimal initialBalance = currentBalance;
             BigDecimal interest = BigDecimalMath.multiply(currentBalance, tem);
-            BigDecimal desgravamen = BigDecimalMath.multiply(currentBalance, request.getMonthlyDesgravamenRate());
-            BigDecimal vehicleInsurance = BigDecimalMath.multiply(vehiclePrice, request.getMonthlyVehicleInsuranceRate());
-            BigDecimal totalMonthlyPayment = BigDecimalMath.add(
-                    BigDecimalMath.add(desgravamen, vehicleInsurance),
-                    request.getMonthlyAdministrativeExpense());
+            BigDecimal finalBalance = BigDecimalMath.add(currentBalance, interest);
 
             schedule.add(buildScheduleRow(
-                    month, initialBalance, interest, BigDecimalMath.zero(),
-                    desgravamen, vehicleInsurance, request.getMonthlyAdministrativeExpense(),
-                    BigDecimalMath.zero(), BigDecimalMath.zero(), totalMonthlyPayment,
-                    BigDecimalMath.add(currentBalance, interest)));
+                    month, firstPaymentDate.plusMonths(month - 1L), initialBalance, interest, BigDecimalMath.zero(),
+                    BigDecimalMath.zero(), BigDecimalMath.zero(), BigDecimalMath.zero(),
+                    BigDecimalMath.zero(), BigDecimalMath.zero(), BigDecimalMath.zero(),
+                    finalBalance));
 
-            cashFlows.add(BigDecimalMath.multiply(totalMonthlyPayment, BigDecimalMath.of("-1")));
-            currentBalance = BigDecimalMath.add(currentBalance, interest);
+            cashFlows.add(BigDecimalMath.zero());
+            currentBalance = finalBalance;
         }
         return currentBalance;
     }
@@ -199,6 +207,7 @@ public class FintechEngineService {
             BigDecimal tem,
             BigDecimal currentBalance,
             int graceMonths,
+            LocalDate firstPaymentDate,
             List<PaymentScheduleRowDTO> schedule,
             List<BigDecimal> cashFlows) {
 
@@ -212,7 +221,7 @@ public class FintechEngineService {
                     BigDecimalMath.add(vehicleInsurance, request.getMonthlyAdministrativeExpense()));
 
             schedule.add(buildScheduleRow(
-                    month, initialBalance, interest, BigDecimalMath.zero(),
+                    month, firstPaymentDate.plusMonths(month - 1L), initialBalance, interest, BigDecimalMath.zero(),
                     desgravamen, vehicleInsurance, request.getMonthlyAdministrativeExpense(),
                     BigDecimalMath.zero(), interest, totalMonthlyPayment, currentBalance));
 
@@ -222,6 +231,7 @@ public class FintechEngineService {
 
     private PaymentScheduleRowDTO buildScheduleRow(
             int period,
+            LocalDate paymentDate,
             BigDecimal initialBalance,
             BigDecimal interest,
             BigDecimal amortization,
@@ -235,6 +245,7 @@ public class FintechEngineService {
 
         return PaymentScheduleRowDTO.builder()
                 .period(period)
+                .paymentDate(paymentDate)
                 .initialBalance(roundOutput(initialBalance))
                 .interest(roundOutput(interest))
                 .amortization(roundOutput(amortization))
@@ -253,11 +264,33 @@ public class FintechEngineService {
     }
 
     private void validateRequest(SimulationRequestDTO request) {
+        if (BigDecimalMath.compare(request.getDownPaymentPercentage(), MIN_DOWN_PAYMENT_PERCENTAGE) < 0
+                || BigDecimalMath.compare(request.getDownPaymentPercentage(), MAX_DOWN_PAYMENT_PERCENTAGE) > 0) {
+            throw new IllegalArgumentException("downPaymentPercentage must be between 0.10 and 0.30");
+        }
+        if (BigDecimalMath.compare(request.getBalloonPaymentPercentage(), MIN_BALLOON_PERCENTAGE) < 0
+                || BigDecimalMath.compare(request.getBalloonPaymentPercentage(), MAX_BALLOON_PERCENTAGE) > 0) {
+            throw new IllegalArgumentException("balloonPaymentPercentage must be between 0.35 and 0.50");
+        }
+        if (request.getTotalTermMonths() != 24
+                && request.getTotalTermMonths() != 36
+                && request.getTotalTermMonths() != 48) {
+            throw new IllegalArgumentException("totalTermMonths must be 24, 36 or 48");
+        }
+        if (BigDecimalMath.compare(request.getRateValue(), BigDecimal.ZERO) <= 0) {
+            throw new IllegalArgumentException("rateValue must be greater than 0");
+        }
+        if ("TNA".equalsIgnoreCase(request.getRateType()) && request.getCapitalizationFrequency() == null) {
+            throw new IllegalArgumentException("capitalizationFrequency is required when rateType is TNA");
+        }
         if (request.getTotalTermMonths() <= request.getGracePeriodMonths()) {
             throw new IllegalArgumentException("totalTermMonths must be greater than gracePeriodMonths");
         }
         if ("NONE".equalsIgnoreCase(request.getGracePeriodType()) && request.getGracePeriodMonths() != 0) {
             throw new IllegalArgumentException("gracePeriodMonths must be 0 when gracePeriodType is NONE");
+        }
+        if (request.getGracePeriodMonths() < 0 || request.getGracePeriodMonths() > 6) {
+            throw new IllegalArgumentException("gracePeriodMonths must be between 0 and 6");
         }
     }
 }
