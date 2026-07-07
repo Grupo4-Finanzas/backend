@@ -32,6 +32,6 @@ class RateConverterTest {
                 BigDecimalMath.of("0.12"),
                 FrecuenciaCapitalizacion.Trimestral);
 
-        assertEquals(0, tem.compareTo(BigDecimalMath.of("0.0099016340")));
+        assertEquals(0, tem.compareTo(BigDecimalMath.of("0.0099016")));
     }
 }

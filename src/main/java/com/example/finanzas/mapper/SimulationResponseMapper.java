@@ -44,6 +44,7 @@ public class SimulationResponseMapper {
                 .initialCapital(engineResponse.getNetLoanAmount())
                 .termMonths(input.getCredit().getTermMonths())
                 .effectiveRatePercentage(input.getInterest().getRateValuePercentage())
+                .temPercentage(decimalToPercent(engineResponse.getMonthlyEffectiveRate()))
                 .tceaPercentage(tceaPct)
                 .van(engineResponse.getNpvAtReferenceRate())
                 .tirPercentage(tirPct)
@@ -86,6 +87,12 @@ public class SimulationResponseMapper {
                 .initialCapital(credito.getMontoFinanciado())
                 .termMonths(credito.getPlazoMeses())
                 .effectiveRatePercentage(credito.getValorTasa())
+                .temPercentage(credito.getTemCalculada() != null
+                        ? BigDecimalMath.scaleRate(
+                                BigDecimalMath.multiply(
+                                        credito.getTemCalculada(),
+                                        HUNDRED))
+                        : null)
                 .tceaPercentage(credito.getTcea())
                 .van(credito.getVan())
                 .tirPercentage(credito.getTir())
@@ -216,7 +223,7 @@ public class SimulationResponseMapper {
         if (decimal == null) {
             return null;
         }
-        return BigDecimalMath.scaleOutput(decimal.multiply(HUNDRED));
+        return BigDecimalMath.scaleRate(decimal.multiply(HUNDRED));
     }
 
     private String mapEstado(EstadoSimulacion estado) {

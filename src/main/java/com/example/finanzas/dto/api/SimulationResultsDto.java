@@ -20,6 +20,7 @@ public class SimulationResultsDto {
     private BigDecimal initialCapital;
     private Integer termMonths;
     private BigDecimal effectiveRatePercentage;
+    private BigDecimal temPercentage;
 
     private BigDecimal tceaPercentage;
     private BigDecimal van;

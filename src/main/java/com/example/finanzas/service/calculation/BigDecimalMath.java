@@ -12,6 +12,7 @@ public final class BigDecimalMath {
 
     public static final int INTERNAL_SCALE = 10;
     public static final int OUTPUT_SCALE = 2;
+    public static final int RATE_SCALE = 7;
     public static final RoundingMode ROUNDING = RoundingMode.HALF_UP;
     public static final MathContext MC = new MathContext(20, ROUNDING);
     private static final int CALCULATION_SCALE = INTERNAL_SCALE + 10;
@@ -45,6 +46,13 @@ public final class BigDecimalMath {
             return BigDecimal.ZERO.setScale(OUTPUT_SCALE, ROUNDING);
         }
         return value.setScale(OUTPUT_SCALE, ROUNDING);
+    }
+
+    public static BigDecimal scaleRate(BigDecimal value) {
+        if (value == null) {
+            return BigDecimal.ZERO.setScale(RATE_SCALE, ROUNDING);
+        }
+        return value.setScale(RATE_SCALE, ROUNDING);
     }
 
     public static BigDecimal add(BigDecimal a, BigDecimal b) {

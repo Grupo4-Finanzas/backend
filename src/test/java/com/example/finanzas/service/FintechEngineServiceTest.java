@@ -80,6 +80,9 @@ class FintechEngineServiceTest {
         SimulationResponseDTO response = engine.calculate(request);
 
         assertEquals(0, response.getRegularMonthlyInstallment().compareTo(new BigDecimal("457.99")));
+        assertEquals(0, response.getMonthlyEffectiveRate().compareTo(new BigDecimal("0.0098636")));
+        assertEquals(0, response.getMonthlyIrr().compareTo(response.getMonthlyEffectiveRate()));
+        assertEquals(0, response.getSchedule().getLast().getFinalBalance().compareTo(BigDecimal.ZERO));
     }
 
     @Test

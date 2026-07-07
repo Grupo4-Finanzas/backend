@@ -8,6 +8,8 @@ import java.math.BigDecimal;
  */
 public final class RateConverter {
 
+    private static final BigDecimal BCP_MONTH_DAYS = BigDecimalMath.of("30");
+    private static final BigDecimal BCP_YEAR_DAYS = BigDecimalMath.of("360");
     private static final BigDecimal TWELVE = BigDecimalMath.of("12");
     private static final BigDecimal ONE = BigDecimal.ONE.setScale(BigDecimalMath.INTERNAL_SCALE, BigDecimalMath.ROUNDING);
 
@@ -36,11 +38,11 @@ public final class RateConverter {
         BigDecimal rate = BigDecimalMath.scaleInternal(rateValue);
 
         if ("TEA".equalsIgnoreCase(rateType)) {
-            // TEM = (1 + TEA)^(1/12) - 1
+            // TEM = (1 + TEA)^(30/360) - 1  (convención bancaria peruana)
             BigDecimal onePlusTea = BigDecimalMath.add(ONE, rate);
-            BigDecimal exponent = BigDecimalMath.divide(ONE, TWELVE);
+            BigDecimal exponent = BigDecimalMath.divide(BCP_MONTH_DAYS, BCP_YEAR_DAYS);
             BigDecimal compound = BigDecimalMath.pow(onePlusTea, exponent);
-            return BigDecimalMath.subtract(compound, ONE);
+            return BigDecimalMath.scaleRate(BigDecimalMath.subtract(compound, ONE));
         }
 
         if ("TNA".equalsIgnoreCase(rateType)) {
@@ -49,7 +51,7 @@ public final class RateConverter {
             BigDecimal periodicNominalRate = BigDecimalMath.divide(rate, compoundingPeriods);
             BigDecimal exponent = BigDecimalMath.divide(compoundingPeriods, TWELVE);
             BigDecimal compound = BigDecimalMath.pow(BigDecimalMath.add(ONE, periodicNominalRate), exponent);
-            return BigDecimalMath.subtract(compound, ONE);
+            return BigDecimalMath.scaleRate(BigDecimalMath.subtract(compound, ONE));
         }
 
         throw new IllegalArgumentException("Unsupported rate type: " + rateType + ". Use TEA or TNA.");

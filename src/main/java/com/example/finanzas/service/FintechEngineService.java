@@ -72,34 +72,41 @@ public class FintechEngineService {
         // Step 4: Standard payment schedule generation
         for (int month = graceMonths + 1; month <= request.getTotalTermMonths(); month++) {
             BigDecimal initialBalanceOfMonth = currentBalance;
+            boolean isLastMonth = month == request.getTotalTermMonths();
 
             BigDecimal interest = BigDecimalMath.multiply(initialBalanceOfMonth, tem);
             BigDecimal desgravamenInsurance = BigDecimalMath.multiply(
                     initialBalanceOfMonth, request.getMonthlyDesgravamenRate());
             BigDecimal vehicleInsurance = BigDecimalMath.multiply(
                     vehiclePrice, request.getMonthlyVehicleInsuranceRate());
-            BigDecimal amortization = BigDecimalMath.subtract(regularMonthlyInstallment, interest);
 
-            BigDecimal balloonPaymentPaid = month == request.getTotalTermMonths()
+            BigDecimal balloonPaymentPaid = isLastMonth
                     ? balloonPayment
                     : BigDecimalMath.zero();
 
+            BigDecimal amortization;
+            BigDecimal ordinaryPaymentForMonth;
+            BigDecimal finalBalanceOfMonth;
+
+            if (isLastMonth) {
+                amortization = BigDecimalMath.subtract(initialBalanceOfMonth, balloonPaymentPaid);
+                ordinaryPaymentForMonth = BigDecimalMath.add(interest, amortization);
+                finalBalanceOfMonth = BigDecimalMath.zero();
+            } else {
+                amortization = BigDecimalMath.subtract(regularMonthlyInstallment, interest);
+                ordinaryPaymentForMonth = regularMonthlyInstallment;
+                finalBalanceOfMonth = BigDecimalMath.subtract(initialBalanceOfMonth, amortization);
+            }
+
             BigDecimal totalMonthlyPayment = BigDecimalMath.add(
-                    BigDecimalMath.add(regularMonthlyInstallment, desgravamenInsurance),
+                    BigDecimalMath.add(ordinaryPaymentForMonth, desgravamenInsurance),
                     BigDecimalMath.add(vehicleInsurance,
                             BigDecimalMath.add(request.getMonthlyAdministrativeExpense(), balloonPaymentPaid)));
-
-            BigDecimal finalBalanceOfMonth = BigDecimalMath.subtract(
-                    BigDecimalMath.subtract(initialBalanceOfMonth, amortization),
-                    balloonPaymentPaid);
-            if (BigDecimalMath.compare(finalBalanceOfMonth, BigDecimal.ZERO) < 0) {
-                finalBalanceOfMonth = BigDecimalMath.zero();
-            }
 
             schedule.add(buildScheduleRow(
                     month, firstPaymentDate.plusMonths(month - 1L), initialBalanceOfMonth, interest, amortization,
                     desgravamenInsurance, vehicleInsurance, request.getMonthlyAdministrativeExpense(),
-                    balloonPaymentPaid, regularMonthlyInstallment, totalMonthlyPayment, finalBalanceOfMonth));
+                    balloonPaymentPaid, ordinaryPaymentForMonth, totalMonthlyPayment, finalBalanceOfMonth));
 
             cashFlows.add(BigDecimalMath.multiply(totalMonthlyPayment, BigDecimalMath.of("-1")));
             currentBalance = finalBalanceOfMonth;
@@ -127,9 +134,9 @@ public class FintechEngineService {
                 .netLoanAmount(roundOutput(netLoanAmount))
                 .downPayment(roundOutput(downPayment))
                 .balloonPayment(roundOutput(balloonPayment))
-                .monthlyEffectiveRate(roundOutput(tem))
+                .monthlyEffectiveRate(BigDecimalMath.scaleRate(tem))
                 .regularMonthlyInstallment(roundOutput(regularMonthlyInstallment))
-                .monthlyIrr(roundOutput(monthlyIrr))
+                .monthlyIrr(BigDecimalMath.scaleRate(monthlyIrr))
                 .tcea(roundOutput(tcea))
                 .npvAtIrr(roundOutput(npvAtIrr))
                 .npvAtReferenceRate(npvAtReferenceRate != null ? roundOutput(npvAtReferenceRate) : null)

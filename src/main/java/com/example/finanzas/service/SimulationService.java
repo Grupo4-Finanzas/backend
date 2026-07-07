@@ -263,7 +263,7 @@ public class SimulationService {
         if (decimalRate == null) {
             return null;
         }
-        return BigDecimalMath.scaleOutput(decimalRate.multiply(HUNDRED));
+        return decimalRate.multiply(HUNDRED).setScale(4, java.math.RoundingMode.HALF_UP);
     }
 
     private Instant toStartInstant(LocalDate date) {
