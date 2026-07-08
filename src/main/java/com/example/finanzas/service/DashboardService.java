@@ -27,7 +27,7 @@ public class DashboardService {
                 .limit(5)
                 .toList();
 
-        SimulationSummaryDto summary = buildSummary(creditos);
+        SimulationSummaryDto summary = buildSummary(creditos, history);
 
         RecommendedVehicleDto recommendedVehicle = RecommendedVehicleDto.builder()
                 .name("Model S Pro")
@@ -43,7 +43,7 @@ public class DashboardService {
                 .build();
     }
 
-    private SimulationSummaryDto buildSummary(List<Credito> creditos) {
+    private SimulationSummaryDto buildSummary(List<Credito> creditos, List<SimulationHistoryItemDto> history) {
         if (creditos.isEmpty()) {
             return SimulationSummaryDto.builder()
                     .tcea(BigDecimal.ZERO)
@@ -54,10 +54,13 @@ public class DashboardService {
         }
 
         Credito latest = creditos.getFirst();
+        BigDecimal averageMonthlyPayment = history.isEmpty()
+                ? latest.getCuotaMensualOrdinaria()
+                : history.getFirst().getMonthlyPayment();
         return SimulationSummaryDto.builder()
                 .tcea(latest.getTcea())
                 .van(latest.getVan())
-                .monthlyPayment(latest.getCuotaMensualOrdinaria())
+                .monthlyPayment(averageMonthlyPayment)
                 .termMonths(latest.getPlazoMeses())
                 .build();
     }

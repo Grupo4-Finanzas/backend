@@ -218,6 +218,7 @@ Body:
 
 ```json
 {
+  "documentNumber": "12345678",
   "fullName": "Carlos Mendoza",
   "email": "carlos.mendoza@example.com",
   "password": "password123",
@@ -232,6 +233,7 @@ Respuesta:
   "token": "jwt-token",
   "user": {
     "id": 1,
+    "documentNumber": "12345678",
     "firstName": "Carlos",
     "fullName": "Carlos Mendoza",
     "email": "carlos.mendoza@example.com",
@@ -285,6 +287,7 @@ Body:
 
 ```json
 {
+  "documentNumber": "12345678",
   "fullName": "Carlos Mendoza Actualizado"
 }
 ```
@@ -294,6 +297,7 @@ Respuesta:
 ```json
 {
   "id": 1,
+  "documentNumber": "12345678",
   "firstName": "Carlos",
   "fullName": "Carlos Mendoza Actualizado",
   "email": "carlos.mendoza@example.com",
@@ -304,7 +308,7 @@ Respuesta:
 Uso frontend:
 
 - Pantalla de perfil o centro de ayuda.
-- Permite persistir el nombre completo del usuario.
+- Permite persistir el DNI y nombre completo del usuario.
 - Despues de actualizar, refrescar el usuario guardado en `localStorage`.
 
 ### 7.5 Cambiar contrasena autenticado
@@ -394,10 +398,6 @@ Body:
 
 ```json
 {
-  "client": {
-    "documentNumber": "12345678",
-    "fullName": "Carlos Mendoza"
-  },
   "vehicle": {
     "currency": "PEN",
     "vehiclePrice": 30000
@@ -437,8 +437,10 @@ Respuesta:
   "input": {},
   "results": {
     "currency": "PEN",
-    "monthlyPayment": 457.99,
+    "monthlyPayment": 781.88,
+    "regularMonthlyPayment": 457.99,
     "initialCapital": 24000.00,
+    "balloonPaymentAmount": 10500.00,
     "termMonths": 48,
     "effectiveRatePercentage": 1.00,
     "tceaPercentage": 20.00,
@@ -455,6 +457,7 @@ Accion frontend:
 - Mostrar resultados financieros.
 - Guardar `id` para consultar detalle o cronograma.
 - Si el usuario confirma la simulacion, navegar a `/simulations/:id`.
+- No enviar `client`; el backend usa DNI y nombre del usuario autenticado.
 
 ### 8.2 Calculo directo de motor
 
@@ -474,12 +477,13 @@ No deberia ser el endpoint principal del usuario final porque no guarda historia
 
 | Campo frontend | Campo API | Tipo | Regla |
 |---|---|---:|---|
-| DNI | `client.documentNumber` | string | 8 digitos numericos |
-| Nombre completo | `client.fullName` | string | obligatorio, maximo 100 |
+| DNI | perfil del usuario | string | Se registra en auth y se obtiene con `/auth/me` |
+| Nombre completo | perfil del usuario | string | Se registra en auth y se obtiene con `/auth/me` |
 | Moneda | `vehicle.currency` | string | `PEN` o `USD` |
 | Precio vehiculo | `vehicle.vehiclePrice` | number | mayor a 0 |
 | Cuota inicial % | `credit.initialFeePercentage` | number | 10 a 30 |
 | Cuota balon % | `credit.balloonFeePercentage` | number | 35 a 50 |
+| Valor cuota balon | `results.balloonPaymentAmount` | number | calculado por backend |
 | Plazo | `credit.termMonths` | number | 24, 36 o 48 |
 | Tipo tasa | `interest.rateType` | string | `TEA`, `TNA`, `Efectiva`, `Nominal` |
 | Tasa anual % | `interest.rateValuePercentage` | number | mayor a 0 |
@@ -533,7 +537,7 @@ Respuesta:
     "vehiclePrice": 45000.00,
     "currency": "PEN",
     "tceaPercentage": 20.0000,
-    "monthlyPayment": 756.17,
+      "monthlyPayment": 1391.79,
     "termMonths": 48,
     "status": "CALCULATED"
   }
@@ -676,7 +680,7 @@ Respuesta:
   "summary": {
     "tcea": 20.0000,
     "van": -3590.91,
-    "monthlyPayment": 756.17,
+    "monthlyPayment": 1391.79,
     "termMonths": 48
   },
   "simulations": [],
@@ -753,7 +757,7 @@ Mensajes comunes:
 ```ts
 // src/app/core/models/simulation.models.ts
 export type SimulationDraft = {
-  client: {
+  client?: {
     documentNumber: string;
     fullName: string;
   };
@@ -793,6 +797,7 @@ export type SimulationHistoryItem = {
   currency: "PEN" | "USD";
   tceaPercentage: number;
   monthlyPayment: number;
+  regularMonthlyPayment?: number;
   termMonths: number;
   status: string;
 };
@@ -835,6 +840,7 @@ type AuthResponse = {
   token: string;
   user: {
     id: number;
+    documentNumber: string;
     firstName: string;
     fullName: string;
     email: string;
@@ -849,6 +855,7 @@ export class AuthService {
   constructor(private readonly http: HttpClient) {}
 
   register(payload: {
+    documentNumber: string;
     fullName: string;
     email: string;
     password: string;
@@ -867,7 +874,7 @@ export class AuthService {
     return this.http.get<AuthResponse["user"]>(`${this.baseUrl}/me`);
   }
 
-  updateProfile(payload: { fullName: string }) {
+  updateProfile(payload: { documentNumber: string; fullName: string }) {
     return this.http.patch<AuthResponse["user"]>(`${this.baseUrl}/me`, payload)
       .pipe(tap(user => localStorage.setItem("user", JSON.stringify(user))));
   }
@@ -1041,8 +1048,6 @@ export class SimulationFormComponent {
   errorMessage = "";
 
   form = this.fb.nonNullable.group({
-    documentNumber: ["", [Validators.required, Validators.pattern(/^\d{8}$/)]],
-    fullName: ["", [Validators.required, Validators.maxLength(100)]],
     currency: ["PEN", [Validators.required]],
     vehiclePrice: [30000, [Validators.required, Validators.min(1)]],
     initialFeePercentage: [20, [Validators.required, Validators.min(10), Validators.max(30)]],
@@ -1073,10 +1078,6 @@ export class SimulationFormComponent {
 
     const value = this.form.getRawValue();
     const payload = {
-      client: {
-        documentNumber: value.documentNumber,
-        fullName: value.fullName
-      },
       vehicle: {
         currency: value.currency as "PEN" | "USD",
         vehiclePrice: value.vehiclePrice
@@ -1163,6 +1164,7 @@ Objetivo: crear una cuenta y dejar al usuario autenticado.
 
 Debe tener:
 
+- Campo `documentNumber`.
 - Campo `fullName`.
 - Campo `email`.
 - Campo `password`.
@@ -1212,11 +1214,11 @@ Funcionamiento:
 
 ### 16.4 Nueva simulacion
 
-Objetivo: registrar los datos del cliente, vehiculo, credito, tasas, gracia y costos para calcular el credito.
+Objetivo: calcular el credito usando el cliente autenticado y los datos ingresados de vehiculo, credito, tasas, gracia y costos.
 
 Debe tener secciones:
 
-- Datos del cliente: DNI y nombre completo.
+- Datos del cliente: mostrar DNI y nombre completo desde `/auth/me` en modo lectura.
 - Vehiculo: moneda y precio.
 - Credito: cuota inicial, cuota balon y plazo.
 - Tasa: tipo de tasa, valor y capitalizacion si aplica.
@@ -1234,12 +1236,13 @@ POST /api/v1/simulations/calculate
 Funcionamiento:
 
 1. Angular arma un `SimulationDraft`.
-2. Si `rateType` es `TEA` o `Efectiva`, enviar `capitalizationFrequency: null`.
-3. Si `rateType` es `TNA` o `Nominal`, exigir `capitalizationFrequency`.
-4. Si `gracePeriod.type` es `NONE`, enviar `months: 0`.
-5. Al enviar, el backend calcula y persiste la simulacion.
-6. La respuesta incluye `id`, `input` y `results`.
-7. Navegar a `/simulations/:id` para mostrar el detalle.
+2. No envia `client`; el backend lo completa desde el usuario autenticado.
+3. Si `rateType` es `TEA` o `Efectiva`, enviar `capitalizationFrequency: null`.
+4. Si `rateType` es `TNA` o `Nominal`, exigir `capitalizationFrequency`.
+5. Si `gracePeriod.type` es `NONE`, enviar `months: 0`.
+6. Al enviar, el backend calcula y persiste la simulacion.
+7. La respuesta incluye `id`, `input` y `results`.
+8. Navegar a `/simulations/:id` para mostrar el detalle.
 
 Validaciones frontend recomendadas:
 
@@ -1279,7 +1282,8 @@ Funcionamiento:
 2. Llama a `SimulationService.getById(id)`.
 3. Renderiza `input` para mostrar lo que se envio.
 4. Renderiza `results` para mostrar indicadores.
-5. Usar `results.monthlyPayment` como cuota ordinaria, no como pago total con seguros.
+5. Usar `results.monthlyPayment` como pago mensual promedio total para el usuario final.
+6. Usar `results.regularMonthlyPayment` si se necesita mostrar la cuota ordinaria financiera.
 6. El boton PDF llama a `GET /api/v1/simulations/{id}/report/pdf` con `responseType: "blob"`.
 
 ### 16.6 Cronograma
@@ -1456,7 +1460,8 @@ Flujo de errores:
 - Si `rateType` es `TEA` o `Efectiva`, envia `capitalizationFrequency: null`.
 - Si `rateType` es `TNA` o `Nominal`, exige `capitalizationFrequency`.
 - Si `gracePeriod.type` es `NONE`, fuerza `months = 0`.
-- Muestra la cuota ordinaria desde `results.monthlyPayment`.
+- Muestra el pago mensual aproximado desde `results.monthlyPayment`.
+- Si necesitas la cuota ordinaria financiera, usa `results.regularMonthlyPayment`.
 - Para el cronograma, muestra el pago del periodo desde `totalPayment`.
 - Para dashboards, interpreta `summary` como la ultima simulacion guardada.
 - Configura un interceptor para agregar `Authorization: Bearer <token>` automaticamente.

@@ -15,9 +15,11 @@ public class SimulationResultsDto {
 
     private String currency;
     private BigDecimal monthlyPayment;
+    private BigDecimal regularMonthlyPayment;
     private String includedCostsDescription;
 
     private BigDecimal initialCapital;
+    private BigDecimal balloonPaymentAmount;
     private Integer termMonths;
     private BigDecimal effectiveRatePercentage;
     private BigDecimal temPercentage;

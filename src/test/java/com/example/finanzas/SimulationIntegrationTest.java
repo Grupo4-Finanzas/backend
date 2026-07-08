@@ -51,6 +51,7 @@ class SimulationIntegrationTest {
     @Test
     void authRegisterAndCalculateSimulation() throws Exception {
         Map<String, String> register = Map.of(
+                "documentNumber", "12345678",
                 "fullName", "Carlos Mendoza",
                 "email", "integration@test.com",
                 "password", "password123",
@@ -127,7 +128,6 @@ class SimulationIntegrationTest {
 
     private Map<String, Object> buildFrontendDraft() {
         Map<String, Object> draft = new HashMap<>();
-        draft.put("client", Map.of("documentNumber", "12345678", "fullName", "Carlos Mendoza"));
         draft.put("vehicle", Map.of("currency", "PEN", "vehiclePrice", 30000));
         draft.put("credit", Map.of("initialFeePercentage", 20, "balloonFeePercentage", 35, "termMonths", 48));
         draft.put("interest", Map.of("rateType", "TEA", "rateValuePercentage", 12.5, "paymentFrequency", "MONTHLY"));

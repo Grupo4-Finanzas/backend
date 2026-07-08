@@ -56,6 +56,7 @@ Body:
 
 ```json
 {
+  "documentNumber": "12345678",
   "fullName": "Carlos Mendoza",
   "email": "carlos.mendoza.postman@example.com",
   "password": "password123",
@@ -241,10 +242,6 @@ Body TEA sin gracia:
 
 ```json
 {
-  "client": {
-    "documentNumber": "12345678",
-    "fullName": "Carlos Mendoza"
-  },
   "vehicle": {
     "currency": "PEN",
     "vehiclePrice": 30000
@@ -304,10 +301,6 @@ Body:
 
 ```json
 {
-  "client": {
-    "documentNumber": "12345678",
-    "fullName": "Carlos Mendoza"
-  },
   "vehicle": {
     "currency": "USD",
     "vehiclePrice": 18000
@@ -359,10 +352,6 @@ Body:
 
 ```json
 {
-  "client": {
-    "documentNumber": "12345678",
-    "fullName": "Carlos Mendoza"
-  },
   "vehicle": {
     "currency": "PEN",
     "vehiclePrice": 45000
@@ -422,7 +411,7 @@ Respuesta esperada:
     "vehiclePrice": 30000.00,
     "currency": "PEN",
     "tceaPercentage": 20.00,
-    "monthlyPayment": 457.99,
+    "monthlyPayment": 781.88,
     "termMonths": 48,
     "status": "CALCULATED"
   }
@@ -472,7 +461,7 @@ Respuesta esperada:
       "vehiclePrice": 30000.00,
       "currency": "PEN",
       "tceaPercentage": 20.00,
-      "monthlyPayment": 457.99,
+      "monthlyPayment": 781.88,
       "termMonths": 48,
       "status": "CALCULATED"
     }
@@ -590,7 +579,7 @@ Respuesta esperada:
   "summary": {
     "tcea": 20.0000,
     "van": -3590.91,
-    "monthlyPayment": 756.17,
+    "monthlyPayment": 1391.79,
     "termMonths": 48
   },
   "simulations": [
@@ -600,7 +589,7 @@ Respuesta esperada:
       "vehiclePrice": 45000.00,
       "currency": "PEN",
       "tceaPercentage": 20.0000,
-      "monthlyPayment": 756.17,
+      "monthlyPayment": 1391.79,
       "termMonths": 48,
       "status": "CALCULATED"
     }
@@ -621,7 +610,7 @@ Interpretacion:
 | `summary` | Resumen de la ultima simulacion guardada del cliente autenticado. Toma la simulacion mas reciente por `fechaCreacion` descendente. |
 | `summary.tcea` | TCEA de la ultima simulacion. |
 | `summary.van` | VAN de la ultima simulacion. |
-| `summary.monthlyPayment` | Cuota mensual ordinaria de la ultima simulacion, sin seguros ni gastos. |
+| `summary.monthlyPayment` | Pago mensual promedio total de la ultima simulacion. Incluye el efecto de seguros, gastos y balon prorrateado. |
 | `summary.termMonths` | Plazo de la ultima simulacion. |
 | `simulations` | Lista de las ultimas 5 simulaciones del cliente autenticado. |
 | `recommendedVehicle` | Vehiculo recomendado estatico para poblar el dashboard del frontend. Actualmente no sale de un motor de recomendacion ni de la base de datos. |
@@ -680,43 +669,18 @@ Respuesta esperada:
 ## 4.1 DNI invalido
 
 ```http
-POST {{baseUrl}}/api/v1/simulations/calculate
+POST {{baseUrl}}/api/v1/auth/register
 ```
 
 Body: usa `documentNumber` con menos de 8 digitos.
 
 ```json
 {
-  "client": {
-    "documentNumber": "123",
-    "fullName": "Carlos Mendoza"
-  },
-  "vehicle": {
-    "currency": "PEN",
-    "vehiclePrice": 30000
-  },
-  "credit": {
-    "initialFeePercentage": 20,
-    "balloonFeePercentage": 35,
-    "termMonths": 48
-  },
-  "interest": {
-    "rateType": "TEA",
-    "rateValuePercentage": 12.5,
-    "paymentFrequency": "MONTHLY"
-  },
-  "gracePeriod": {
-    "type": "NONE",
-    "months": 0
-  },
-  "financialAnalysis": {
-    "cokAnnualPercentage": 15
-  },
-  "costs": {
-    "lifeInsuranceMonthlyRatePercentage": 0.05,
-    "administrativeExpenses": 10,
-    "vehicleInsuranceAnnualRatePercentage": 3.5
-  }
+  "documentNumber": "123",
+  "fullName": "Carlos Mendoza",
+  "email": "dni.invalido@example.com",
+  "password": "password123",
+  "confirmPassword": "password123"
 }
 ```
 
@@ -818,7 +782,7 @@ Respuesta esperada:
 
 | Campo | Significado |
 |---|---|
-| `monthlyPayment` | Cuota mensual ordinaria, sin sumar balon final |
+| `monthlyPayment` | Pago mensual promedio total del cronograma |
 | `tceaPercentage` | TCEA calculada desde flujo completo del deudor |
 | `tirPercentage` | TIR mensual expresada como porcentaje |
 | `van` | VAN con COK anual convertida a mensual efectiva |

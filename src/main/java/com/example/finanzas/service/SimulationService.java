@@ -2,6 +2,7 @@ package com.example.finanzas.service;
 
 import com.example.finanzas.dto.SimulationRequestDTO;
 import com.example.finanzas.dto.SimulationResponseDTO;
+import com.example.finanzas.dto.api.ClientDataDto;
 import com.example.finanzas.dto.api.SimulationCalculationResponseDto;
 import com.example.finanzas.dto.api.SimulationDraftDto;
 import com.example.finanzas.dto.api.SimulationHistoryItemDto;
@@ -28,6 +29,7 @@ import java.math.BigDecimal;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.time.ZoneId;
+import java.util.Comparator;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.PageRequest;
@@ -53,19 +55,17 @@ public class SimulationService {
 
     @Transactional
     public SimulationCalculationResponseDto calculateAndPersist(SimulationDraftDto draft, Cliente cliente) {
-        validateDraft(draft, cliente);
-        SimulationRequestDTO engineRequest = simulationMapper.toEngineRequest(draft);
+        SimulationDraftDto simulationDraft = withAuthenticatedClient(draft, cliente);
+        validateDraft(simulationDraft, cliente);
+        SimulationRequestDTO engineRequest = simulationMapper.toEngineRequest(simulationDraft);
         SimulationResponseDTO engineResponse = fintechEngineService.calculate(engineRequest);
 
-        updateClienteFromDraft(cliente, draft);
-        clienteRepository.save(cliente);
-
         Vehiculo vehiculo = new Vehiculo();
-        vehiculo.setMoneda(Moneda.valueOf(draft.getVehicle().getCurrency().trim().toUpperCase()));
-        vehiculo.setPrecio(draft.getVehicle().getVehiclePrice());
+        vehiculo.setMoneda(Moneda.valueOf(simulationDraft.getVehicle().getCurrency().trim().toUpperCase()));
+        vehiculo.setPrecio(simulationDraft.getVehicle().getVehiclePrice());
         vehiculo = vehiculoRepository.save(vehiculo);
 
-        Credito credito = buildCredito(draft, engineRequest, engineResponse, cliente, vehiculo);
+        Credito credito = buildCredito(simulationDraft, engineRequest, engineResponse, cliente, vehiculo);
         credito = creditoRepository.save(credito);
 
         for (var row : engineResponse.getSchedule()) {
@@ -91,7 +91,7 @@ public class SimulationService {
         return responseMapper.toApiResponse(
                 credito.getIdCredito(),
                 credito.getFechaCreacion(),
-                draft,
+                simulationDraft,
                 engineResponse);
     }
 
@@ -108,6 +108,7 @@ public class SimulationService {
                 rebuildEngineResponse(credito));
     }
 
+    @Transactional(readOnly = true)
     public List<SimulationHistoryItemDto> getHistory(Cliente cliente) {
         return creditoRepository.findByClienteIdClienteOrderByFechaCreacionDesc(cliente.getIdCliente())
                 .stream()
@@ -177,11 +178,6 @@ public class SimulationService {
         return fintechEngineService.calculate(request);
     }
 
-    private void updateClienteFromDraft(Cliente cliente, SimulationDraftDto draft) {
-        cliente.setDni(draft.getClient().getDocumentNumber());
-        cliente.setNombre(draft.getClient().getFullName());
-    }
-
     private void validateDraft(SimulationDraftDto draft, Cliente cliente) {
         String documentNumber = draft.getClient().getDocumentNumber();
         if (clienteRepository.existsByDniAndIdClienteNot(documentNumber, cliente.getIdCliente())) {
@@ -210,6 +206,21 @@ public class SimulationService {
                 || draft.getInterest().getCapitalizationFrequency().isBlank())) {
             throw new BadRequestException("capitalizationFrequency is required for nominal annual rate");
         }
+    }
+
+    private SimulationDraftDto withAuthenticatedClient(SimulationDraftDto draft, Cliente cliente) {
+        return SimulationDraftDto.builder()
+                .client(ClientDataDto.builder()
+                        .documentNumber(cliente.getDni())
+                        .fullName(cliente.getNombre())
+                        .build())
+                .vehicle(draft.getVehicle())
+                .credit(draft.getCredit())
+                .interest(draft.getInterest())
+                .gracePeriod(draft.getGracePeriod())
+                .financialAnalysis(draft.getFinancialAnalysis())
+                .costs(draft.getCosts())
+                .build();
     }
 
     private Credito buildCredito(
@@ -354,6 +365,7 @@ public class SimulationService {
                 .viability(credito.getVan() != null && credito.getVan().compareTo(BigDecimal.ZERO) >= 0
                         ? "VIABLE" : "NOT_VIABLE")
                 .schedule(credito.getCronogramas().stream()
+                        .sorted(Comparator.comparing(Cronograma::getPeriodo))
                         .map(c -> com.example.finanzas.dto.PaymentScheduleRowDTO.builder()
                                 .period(c.getPeriodo())
                                 .paymentDate(c.getFechaPago())

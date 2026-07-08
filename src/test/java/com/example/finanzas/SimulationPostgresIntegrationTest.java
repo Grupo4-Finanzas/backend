@@ -30,6 +30,7 @@ class SimulationPostgresIntegrationTest extends AbstractIntegrationTest {
     @Test
     void authRegisterAndCalculateSimulation() throws Exception {
         Map<String, String> register = Map.of(
+                "documentNumber", "12345678",
                 "fullName", "Carlos Mendoza",
                 "email", "demo@crediauto.pe",
                 "password", "password123",

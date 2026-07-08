@@ -38,10 +38,12 @@ public class SimulationResponseMapper {
 
         SimulationResultsDto results = SimulationResultsDto.builder()
                 .currency(input.getVehicle().getCurrency())
-                .monthlyPayment(engineResponse.getRegularMonthlyInstallment())
+                .monthlyPayment(averageTotalPayment(engineResponse.getSchedule()))
+                .regularMonthlyPayment(engineResponse.getRegularMonthlyInstallment())
                 .includedCostsDescription(
-                        "Esta cuota incluye seguro de desgravamen, seguro vehicular y gastos administrativos.")
+                        "La cuota mensual mostrada es el promedio del pago total del cronograma. La cuota ordinaria se muestra en regularMonthlyPayment.")
                 .initialCapital(engineResponse.getNetLoanAmount())
+                .balloonPaymentAmount(engineResponse.getBalloonPayment())
                 .termMonths(input.getCredit().getTermMonths())
                 .effectiveRatePercentage(input.getInterest().getRateValuePercentage())
                 .temPercentage(decimalToPercent(engineResponse.getMonthlyEffectiveRate()))
@@ -81,10 +83,12 @@ public class SimulationResponseMapper {
     public SimulationCalculationResponseDto fromCredito(Credito credito, SimulationDraftDto input) {
         SimulationResultsDto results = SimulationResultsDto.builder()
                 .currency(credito.getVehiculo().getMoneda().name())
-                .monthlyPayment(credito.getCuotaMensualOrdinaria())
+                .monthlyPayment(averageTotalPaymentFromCronograma(credito.getCronogramas()))
+                .regularMonthlyPayment(credito.getCuotaMensualOrdinaria())
                 .includedCostsDescription(
-                        "Esta cuota incluye seguro de desgravamen, seguro vehicular y gastos administrativos.")
+                        "La cuota mensual mostrada es el promedio del pago total del cronograma. La cuota ordinaria se muestra en regularMonthlyPayment.")
                 .initialCapital(credito.getMontoFinanciado())
+                .balloonPaymentAmount(credito.getValorCuotaBalon())
                 .termMonths(credito.getPlazoMeses())
                 .effectiveRatePercentage(credito.getValorTasa())
                 .temPercentage(credito.getTemCalculada() != null
@@ -224,6 +228,28 @@ public class SimulationResponseMapper {
             return null;
         }
         return BigDecimalMath.scaleRate(decimal.multiply(HUNDRED));
+    }
+
+    private BigDecimal averageTotalPayment(List<PaymentScheduleRowDTO> schedule) {
+        if (schedule == null || schedule.isEmpty()) {
+            return BigDecimal.ZERO.setScale(BigDecimalMath.OUTPUT_SCALE, BigDecimalMath.ROUNDING);
+        }
+        BigDecimal total = BigDecimalMath.zero();
+        for (PaymentScheduleRowDTO row : schedule) {
+            total = BigDecimalMath.add(total, row.getTotalMonthlyPayment());
+        }
+        return BigDecimalMath.scaleOutput(BigDecimalMath.divide(total, BigDecimalMath.of(schedule.size())));
+    }
+
+    private BigDecimal averageTotalPaymentFromCronograma(List<com.example.finanzas.entity.Cronograma> schedule) {
+        if (schedule == null || schedule.isEmpty()) {
+            return BigDecimal.ZERO.setScale(BigDecimalMath.OUTPUT_SCALE, BigDecimalMath.ROUNDING);
+        }
+        BigDecimal total = BigDecimalMath.zero();
+        for (com.example.finanzas.entity.Cronograma row : schedule) {
+            total = BigDecimalMath.add(total, row.getCuotaTotal());
+        }
+        return BigDecimalMath.scaleOutput(BigDecimalMath.divide(total, BigDecimalMath.of(schedule.size())));
     }
 
     private String mapEstado(EstadoSimulacion estado) {

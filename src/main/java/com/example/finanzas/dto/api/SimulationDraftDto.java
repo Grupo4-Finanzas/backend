@@ -14,7 +14,6 @@ import lombok.NoArgsConstructor;
 public class SimulationDraftDto {
 
     @Valid
-    @NotNull
     private ClientDataDto client;
 
     @Valid

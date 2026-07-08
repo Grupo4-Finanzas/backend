@@ -45,9 +45,12 @@ public class AuthService {
         if (clienteRepository.existsByEmail(request.getEmail())) {
             throw new BadRequestException("Email already registered");
         }
+        if (clienteRepository.existsByDni(request.getDocumentNumber())) {
+            throw new BadRequestException("DNI already registered");
+        }
 
         Cliente cliente = new Cliente();
-        cliente.setDni(generatePlaceholderDni());
+        cliente.setDni(request.getDocumentNumber());
         cliente.setNombre(request.getFullName());
         cliente.setEmail(request.getEmail());
         cliente.setPasswordHash(passwordEncoder.encode(request.getPassword()));
@@ -74,6 +77,10 @@ public class AuthService {
 
     @Transactional
     public UserDto updateProfile(Cliente cliente, UpdateProfileRequestDto request) {
+        if (clienteRepository.existsByDniAndIdClienteNot(request.getDocumentNumber(), cliente.getIdCliente())) {
+            throw new BadRequestException("DNI already registered");
+        }
+        cliente.setDni(request.getDocumentNumber());
         cliente.setNombre(request.getFullName());
         return toUserDto(clienteRepository.save(cliente));
     }
@@ -134,6 +141,7 @@ public class AuthService {
         String firstName = cliente.getNombre().split(" ")[0];
         return UserDto.builder()
                 .id(cliente.getIdCliente())
+                .documentNumber(cliente.getDni())
                 .firstName(firstName)
                 .fullName(cliente.getNombre())
                 .email(cliente.getEmail())
@@ -155,11 +163,4 @@ public class AuthService {
         return Base64.getUrlEncoder().withoutPadding().encodeToString(bytes);
     }
 
-    private String generatePlaceholderDni() {
-        String dni;
-        do {
-            dni = String.format("%08d", System.nanoTime() % 100_000_000L);
-        } while (clienteRepository.existsByDni(dni));
-        return dni;
-    }
 }
