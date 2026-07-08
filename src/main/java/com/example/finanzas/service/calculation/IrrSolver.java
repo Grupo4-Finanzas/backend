@@ -4,7 +4,7 @@ import java.math.BigDecimal;
 import java.util.List;
 
 /**
- * Solves monthly IRR via bisection where NPV(cashFlows, rate) = 0.
+ * Resuelve la TIR mensual y el VAN a partir de los flujos de caja del deudor.
  */
 public final class IrrSolver {
 
@@ -16,13 +16,32 @@ public final class IrrSolver {
     }
 
     /**
-     * @param cashFlows period 0 = loan received (+), periods 1..n = payments (-)
-     * @return monthly IRR as decimal fraction
+     * Calcula la Tasa Interna de Retorno (TIR) mensual del crédito.
+     *
+     * <p>Fórmula del profesor (punto de vista del deudor):
+     * {@code 0 = F0 + Σ[t=1..N] Ft / (1 + TIR)^t}
+     *
+     * <p>Donde F0 es el monto financiado recibido, Ft son los pagos mensuales con signo negativo
+     * y TIR es la tasa que iguala el valor presente de los flujos a cero.
+     * Se resuelve por bisección entre 0 y 0.5 mensual.
+     *
+     * @param cashFlows periodo 0 = préstamo recibido (+), periodos 1..n = pagos (-)
+     * @return TIR mensual como fracción decimal
      */
     public static BigDecimal solveMonthlyIrr(List<BigDecimal> cashFlows) {
         return solveMonthlyIrr(cashFlows, BigDecimalMath.of("0.01"));
     }
 
+    /**
+     * Calcula la TIR mensual usando una tasa inicial como punto de partida para la bisección.
+     *
+     * <p>Fórmula del profesor:
+     * {@code 0 = F0 + Σ[t=1..N] Ft / (1 + TIR)^t}
+     *
+     * @param cashFlows periodo 0 = préstamo recibido (+), periodos 1..n = pagos (-)
+     * @param initialGuess estimación inicial de la TIR mensual
+     * @return TIR mensual como fracción decimal
+     */
     public static BigDecimal solveMonthlyIrr(List<BigDecimal> cashFlows, BigDecimal initialGuess) {
         BigDecimal lower = BigDecimal.ZERO;
         BigDecimal upper = BigDecimalMath.min(
@@ -76,7 +95,21 @@ public final class IrrSolver {
     }
 
     /**
-     * NPV = sum( CF_t / (1 + r)^t ) for t = 0..n
+     * Calcula el Valor Actual Neto (VAN) descontando los flujos de caja del deudor.
+     *
+     * <p>Fórmula del profesor (punto de vista del deudor):
+     * {@code VAN = F0 + Σ[t=1..N] Ft / (1 + COK)^t}
+     *
+     * <p>Donde:
+     * <ul>
+     *   <li>F0: flujo inicial positivo (monto financiado recibido por el deudor)</li>
+     *   <li>Ft: flujo del periodo t (pagos mensuales con signo negativo)</li>
+     *   <li>COK: tasa de descuento mensual (COK del deudor o TIR según el caso)</li>
+     * </ul>
+     *
+     * @param cashFlows flujos de caja del deudor (F0 positivo, Ft negativos)
+     * @param rate tasa de descuento mensual en fracción decimal
+     * @return VAN calculado
      */
     public static BigDecimal calculateNpv(List<BigDecimal> cashFlows, BigDecimal rate) {
         BigDecimal npv = BigDecimalMath.zero();

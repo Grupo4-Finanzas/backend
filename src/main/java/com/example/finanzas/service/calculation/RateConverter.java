@@ -4,7 +4,7 @@ import com.example.finanzas.entity.enums.FrecuenciaCapitalizacion;
 import java.math.BigDecimal;
 
 /**
- * Converts input rates to monthly effective rate (TEM).
+ * Convierte tasas de entrada a Tasa Efectiva Mensual (TEM).
  */
 public final class RateConverter {
 
@@ -17,19 +17,37 @@ public final class RateConverter {
     }
 
     /**
-     * @param rateType "TEA" (effective annual) or "TNA" (nominal annual)
-     * @param rateValue decimal fraction (e.g. 0.12 for 12%)
-     * @return monthly effective rate TEM
+     * Convierte TEA o TNA a Tasa Efectiva Mensual (TEM).
+     *
+     * <p>Si la tasa ingresada es efectiva anual, fórmula del profesor:
+     * {@code TEM = (1 + TEA)^(30/360) - 1}
+     *
+     * <p>Si la tasa ingresada es nominal anual, fórmula del profesor:
+     * {@code TEM = (1 + TNA/m)^(m/12) - 1}
+     *
+     * <p>Donde m es el número de capitalizaciones por año.
+     *
+     * @param rateType "TEA" (efectiva anual) o "TNA" (nominal anual)
+     * @param rateValue fracción decimal (ej. 0.12 para 12%)
+     * @return TEM como fracción decimal
      */
     public static BigDecimal toMonthlyEffective(String rateType, BigDecimal rateValue) {
         return toMonthlyEffective(rateType, rateValue, FrecuenciaCapitalizacion.Mensual);
     }
 
     /**
-     * @param rateType "TEA" (effective annual) or "TNA" (nominal annual)
-     * @param rateValue decimal fraction (e.g. 0.12 for 12%)
-     * @param capitalizationFrequency compounding frequency for nominal annual rates
-     * @return monthly effective rate TEM
+     * Convierte TEA o TNA a TEM considerando la frecuencia de capitalización.
+     *
+     * <p>Fórmulas del profesor:
+     * <ul>
+     *   <li>TEA: {@code TEM = (1 + TEA)^(30/360) - 1}</li>
+     *   <li>TNA: {@code TEM = (1 + TNA/m)^(m/12) - 1}</li>
+     * </ul>
+     *
+     * @param rateType "TEA" (efectiva anual) o "TNA" (nominal anual)
+     * @param rateValue fracción decimal (ej. 0.12 para 12%)
+     * @param capitalizationFrequency frecuencia de capitalización para tasas nominales
+     * @return TEM como fracción decimal
      */
     public static BigDecimal toMonthlyEffective(
             String rateType,

@@ -13,8 +13,8 @@ import java.util.List;
 import org.springframework.stereotype.Service;
 
 /**
- * Financial simulation engine for Compra Inteligente vehicle credit.
- * All calculations use BigDecimal exclusively with internal scale 10.
+ * Motor de simulación financiera para crédito vehicular Compra Inteligente.
+ * Todos los cálculos usan BigDecimal con escala interna 10.
  */
 @Service
 public class FintechEngineService {
@@ -25,17 +25,35 @@ public class FintechEngineService {
     private static final BigDecimal MIN_BALLOON_PERCENTAGE = BigDecimalMath.of("0.35");
     private static final BigDecimal MAX_BALLOON_PERCENTAGE = BigDecimalMath.of("0.50");
 
+    /**
+     * Ejecuta la simulación completa del crédito vehicular.
+     *
+     * <p>Fórmulas del profesor aplicadas en este flujo:
+     * <ul>
+     *   <li>Cuota inicial: {@code CI = PV * pCI}</li>
+     *   <li>Monto financiado: {@code P = PV - CI}</li>
+     *   <li>Cuota balón: {@code CB = PV * pCB}</li>
+     *   <li>Interés del periodo: {@code I_n = CI_{n-1} * r}</li>
+     *   <li>Amortización: {@code A_n = C_n - I_n}</li>
+     *   <li>Capital vivo: {@code CI_n = CI_{n-1} - A_n}</li>
+     *   <li>VAN: {@code VAN = F0 + Σ Ft / (1 + COK)^t}</li>
+     *   <li>TIR: {@code 0 = F0 + Σ Ft / (1 + TIR)^t}</li>
+     *   <li>TCEA: {@code TCEA = (1 + TIR)^12 - 1}</li>
+     * </ul>
+     *
+     * <p>Flujos de caja del deudor: {@code F0 = +P}, {@code Ft = -pago total del periodo}.
+     */
     public SimulationResponseDTO calculate(SimulationRequestDTO request) {
         validateRequest(request);
 
         BigDecimal vehiclePrice = BigDecimalMath.scaleInternal(request.getVehiclePrice());
 
         // Step 1: Initial financial setup
-        // CI = vehiclePrice × downPaymentPercentage
+        // CI = PV * pCI
         BigDecimal downPayment = BigDecimalMath.multiply(vehiclePrice, request.getDownPaymentPercentage());
-        // P = vehiclePrice - CI
+        // P = PV - CI
         BigDecimal netLoanAmount = BigDecimalMath.subtract(vehiclePrice, downPayment);
-        // CB = vehiclePrice × balloonPaymentPercentage
+        // CB = PV * pCB
         BigDecimal balloonPayment = BigDecimalMath.multiply(vehiclePrice, request.getBalloonPaymentPercentage());
 
         BigDecimal tem = RateConverter.toMonthlyEffective(
@@ -70,6 +88,7 @@ public class FintechEngineService {
                 currentBalance, balloonPayment, tem, remainingTermMonths);
 
         // Step 4: Standard payment schedule generation
+        // I_n = CI_{n-1} * r; A_n = C_n - I_n; CI_n = CI_{n-1} - A_n
         for (int month = graceMonths + 1; month <= request.getTotalTermMonths(); month++) {
             BigDecimal initialBalanceOfMonth = currentBalance;
             boolean isLastMonth = month == request.getTotalTermMonths();
@@ -112,17 +131,20 @@ public class FintechEngineService {
             currentBalance = finalBalanceOfMonth;
         }
 
-        // Step 5: Dynamic metrics — IRR, TCEA, NPV
+        // Step 5: Dynamic metrics — TIR, TCEA, VAN
+        // 0 = F0 + Σ Ft / (1 + TIR)^t
         BigDecimal monthlyIrr = IrrSolver.solveMonthlyIrr(cashFlows, tem);
         BigDecimal npvAtIrr = IrrSolver.calculateNpv(cashFlows, monthlyIrr);
 
-        // TCEA = (1 + monthlyIRR)^12 - 1
+        // TCEA = (1 + TIR)^12 - 1
         BigDecimal onePlusIrr = BigDecimalMath.add(BigDecimal.ONE, monthlyIrr);
         BigDecimal tcea = BigDecimalMath.subtract(BigDecimalMath.pow(onePlusIrr, TWELVE), BigDecimal.ONE);
 
         BigDecimal npvAtReferenceRate = null;
         String viability = "NOT_VIABLE";
         if (request.getReferenceDiscountRate() != null) {
+            // COK_mensual = (1 + COK_anual)^(1/12) - 1
+            // VAN = F0 + Σ Ft / (1 + COK)^t
             BigDecimal monthlyReferenceRate = RateConverter.toMonthlyEffective(
                     "TEA", request.getReferenceDiscountRate());
             npvAtReferenceRate = IrrSolver.calculateNpv(cashFlows, monthlyReferenceRate);
@@ -146,8 +168,19 @@ public class FintechEngineService {
     }
 
     /**
-     * French amortization with balloon:
-     * C = (P' - CB/(1+r)^n) × r / (1 - (1+r)^(-n))
+     * Calcula la cuota mensual ordinaria del método francés con cuota balón.
+     *
+     * <p>Fórmula del profesor:
+     * {@code C = (P - CB / (1 + r)^n) * r / (1 - (1 + r)^(-n))}
+     *
+     * <p>Donde:
+     * <ul>
+     *   <li>C: cuota mensual ordinaria</li>
+     *   <li>P: saldo sobre el que se recalcula (P' después de gracia, si aplica)</li>
+     *   <li>CB: monto de la cuota balón</li>
+     *   <li>r: TEM</li>
+     *   <li>n: número de cuotas mensuales ordinarias restantes</li>
+     * </ul>
      */
     BigDecimal calculateFrenchInstallmentWithBalloon(
             BigDecimal currentBalance,
@@ -181,6 +214,17 @@ public class FintechEngineService {
         return BigDecimalMath.divide(numeratorFactor, denominatorFactor);
     }
 
+    /**
+     * Procesa el periodo de gracia total capitalizando intereses.
+     *
+     * <p>Fórmulas del profesor durante gracia total:
+     * <ul>
+     *   <li>{@code I_n = CI_{n-1} * r}</li>
+     *   <li>{@code Pago = 0}</li>
+     *   <li>{@code A_n = 0}</li>
+     *   <li>{@code CI_n = CI_{n-1} + I_n}</li>
+     * </ul>
+     */
     private BigDecimal processTotalGrace(
             SimulationRequestDTO request,
             BigDecimal vehiclePrice,
@@ -208,6 +252,18 @@ public class FintechEngineService {
         return currentBalance;
     }
 
+    /**
+     * Procesa el periodo de gracia parcial: el deudor paga intereses y costos sin amortizar capital.
+     *
+     * <p>Fórmulas del profesor durante gracia parcial:
+     * <ul>
+     *   <li>{@code I_n = CI_{n-1} * r}</li>
+     *   <li>{@code Pago = I_n + seguro desgravamen + seguro vehicular + gastos administrativos}</li>
+     *   <li>{@code A_n = 0}</li>
+     *   <li>{@code CI_n = CI_{n-1}}</li>
+     *   <li>{@code F_t = -Pago del periodo}</li>
+     * </ul>
+     */
     private void processPartialGrace(
             SimulationRequestDTO request,
             BigDecimal vehiclePrice,

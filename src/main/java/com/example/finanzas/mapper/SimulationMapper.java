@@ -15,6 +15,15 @@ public class SimulationMapper {
     private static final BigDecimal BCP_PERIOD_DAYS = BigDecimalMath.of("30");
     private static final BigDecimal BCP_YEAR_DAYS = BigDecimalMath.of("365");
 
+    /**
+     * Mapea el borrador del frontend al request del motor financiero.
+     *
+     * <p>Fórmulas de tasas de seguros aplicadas antes del cálculo:
+     * <ul>
+     *   <li>Seguro vehicular: {@code tasa periodo = tasa anual * 30/365}</li>
+     *   <li>Seguro desgravamen: {@code tasa periodo = tasa mensual * 12 * 30/365}</li>
+     * </ul>
+     */
     public SimulationRequestDTO toEngineRequest(SimulationDraftDto draft) {
         BigDecimal vehiclePrice = draft.getVehicle().getVehiclePrice();
 
